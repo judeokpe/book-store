@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require("path");
 const bodyParser = require('body-parser');
 require('dotenv').config();
 
@@ -18,6 +19,8 @@ mongoose.connect(process.env.MONGO_URI)
   .catch(err => console.log(err));
 
 // Routes
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/book', require('./routes/book.route'));
 

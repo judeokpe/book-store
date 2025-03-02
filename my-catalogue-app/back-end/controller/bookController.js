@@ -1,37 +1,36 @@
 const fs = require("fs");
 const path = require("path");
 const sharp = require("sharp");
-const { fromPath } = require("pdf2pic");
-const Book = require("../models/Book")
+const poppler = require("pdf-poppler");
+const Book = require("../models/Book");
 
 // Helper function to extract and resize cover image
 const extractCoverImage = async (pdfPath, outputDir) => {
   try {
-    const options = {
-      density: 150,
-      savePath: outputDir,
+    const outputImage = path.join(outputDir, "cover.png");
+
+    // Convert PDF to image (first page only)
+    await poppler.convert(pdfPath, {
       format: "png",
-      width: 300,
-      height: 400,
-    };
+      out_dir: outputDir,
+      out_prefix: "cover",
+      page: 1,
+    });
 
-    const pdf2pic = fromPath(pdfPath, options);
-    const outputFileName = Date.now() + "-cover.png";
-    const result = await pdf2pic(1, { responseType: "image", filename: outputFileName });
-
-    if (result.success) {
-      const imagePath = path.join(outputDir, outputFileName);
-
-      // Resize the image using sharp
-      await sharp(imagePath).resize(200, 250).toFile(imagePath.replace(".png", "-resized.png"));
-
-      // Delete the original and return resized image path
-      fs.unlinkSync(imagePath);
-      return `/uploads/${outputFileName.replace(".png", "-resized.png")}`;
-    } else {
-      console.error("Failed to generate cover image");
-      return null;
+    const convertedImagePath = path.join(outputDir, "cover-1.png");
+    if (!fs.existsSync(convertedImagePath)) {
+      throw new Error("PDF conversion failed. Image not found.");
     }
+   
+
+    // Resize the image using sharp
+    const resizedImagePath = convertedImagePath.replace(".png", "-resized.png");
+    await sharp(convertedImagePath).resize(200, 250).toFile(resizedImagePath);
+
+    // Delete the original image
+    fs.unlinkSync(convertedImagePath);
+
+    return `/uploads/cover-resized.png`;
   } catch (error) {
     console.error("Error extracting cover image:", error);
     return null;

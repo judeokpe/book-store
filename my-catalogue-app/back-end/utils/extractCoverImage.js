@@ -1,26 +1,35 @@
-const { fromPath } = require("pdf2pic");
+const poppler = require("pdf-poppler");
+const sharp = require("sharp");
 const path = require("path");
+const fs = require("fs");
 
 const extractCoverImage = async (pdfPath, outputDir) => {
   try {
-    const options = {
-      density: 100, // Image resolution
-      savePath: outputDir,
+    const outputImage = path.join(outputDir, "cover.png");
+
+    // Convert PDF to image (first page only)
+    await poppler.convert(pdfPath, {
       format: "png",
-      width: 300, // Resize width
-      height: 400, // Resize height
-    };
+      out_dir: outputDir,
+      out_prefix: "cover",
+      page: 1,
+    });
 
-    const pdf2pic = fromPath(pdfPath, options);
-    const outputFileName = Date.now() + "-cover.png";
-    const result = await pdf2pic(1, { responseType: "image", filename: outputFileName });
+    const convertedImagePath = path.join(outputDir, "cover-1.png");
 
-    if (result.success) {
-      return `/uploads/${outputFileName}`;
-    } else {
-      console.error("Failed to generate cover image");
-      return null;
+    // Check if image exists before processing
+    if (!fs.existsSync(convertedImagePath)) {
+      throw new Error("PDF conversion failed. Image not found.");
     }
+
+    // Resize using sharp
+    const resizedImagePath = convertedImagePath.replace(".png", "-resized.png");
+    await sharp(convertedImagePath).resize(300, 400).toFile(resizedImagePath);
+
+    // Delete the original image
+    fs.unlinkSync(convertedImagePath);
+
+    return `/uploads/cover-resized.png`;
   } catch (error) {
     console.error("Error extracting cover image:", error);
     return null;
